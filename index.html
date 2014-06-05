@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<style>
+
+.borderTop {
+	border-top : 4px solid lightgrey;
+}
+.borderLeft {
+	border-left : 4px solid lightgrey;
+}
+.borderRight {
+	border-right : 4px solid darkgrey;
+}
+.borderBottom {
+	border-bottom : 4px solid darkgrey;
+}
+.selectRed {
+	background-color : red;
+}
+.selectBlue {
+    background-color : blue;
+}
+.allowedLeft {
+    border-left : 4px solid dimgrey;
+}
+.allowedRight {
+    border-right : 4px solid dimgrey;
+}
+.allowedTop {
+    border-top : 4px solid grey;
+}
+.allowedBottom {
+    border-bottom : 4px solid grey;
+}
+#footer {
+    position:absolute;
+    bottom:0;
+    width:100%;
+    height:60px;
+}
+td {
+	width : 50px;
+	height : 50px;
+	background-color : lightblue;
+}
+table {
+	margin : auto;
+}
+
+</style>
+<script type="text/javascript" src="http://code.jquery.com/jquery-2.1.0.min.js"></script>
+<script type="text/javascript">
+
+var matrix = zero2D(9,9);
+var allowedi=-1, allowedj=-1;
+var turn = 1;
+var myTurn = 0;
+var start = true;
+var color = "selectRed";
+var allgoes=false
+var ws
+$(function() {
+	// on window.load
+	ws = new WebSocket("ws://188.226.182.209:80/ws")
+	ws.onopen = function() {
+		//ws.send(JSON.stringify(["SUBSCRIBE", "test"]));
+        load()
+
+	};
+	ws.onmessage = function (evt) {
+   		console.log(""+evt.data);
+		console.log($("#" + evt.data));
+        removeAllowedStyle(allowedi,allowedj);
+	
+        var elems = evt.data.split('_');	
+       
+        $("#"+evt.data).addClass(color);  
+        matrix[elems[1]][elems[2]]=2-myTurn;//i'm 1, he's 2			 
+
+        checkMiniWin(Math.floor(elems[1]/3),Math.floor(elems[2]/3), true);            
+        
+        allowedi = elems[1]%3;
+		allowedj = elems[2]%3;	
+		
+        var win = checkMiniWin(allowedi, allowedj, false);            
+        
+        if (win==true){
+            allgoes=true
+        } else {
+            addAllowedStyle();      
+        }
+               
+        myTurn=Math.abs(myTurn-1);   	    
+        if (color== "selectRed"){
+	        color = "selectBlue";
+	    } else {
+		    color = "selectRed";
+	    }
+
+	};
+})
+
+function load(){
+	
+	var table = $("#game")
+	var rowborder = 9;
+	var colborder = 9;
+	for (var i = 0; i < rowborder; i++) {
+		var tr = $("<tr></tr>")
+		table.append(tr)
+		for (var j = 0; j < colborder; j++) {
+			var cl = ""
+		    tr.append($('<td id="td_' + i + "_" + j + '"></td>'))	
+            if (j % 3 == 2) {
+			    $("#td_"+i+"_"+j).addClass("borderRight")			
+			}			
+		    if (i % 3 == 2) {
+			    $("#td_"+i+"_"+j).addClass("borderBottom")
+		    }
+		    if (j % 3 == 0) {
+			    $("#td_"+i+"_"+j).addClass("borderLeft")
+		    }
+		    if (i % 3 == 0) {
+			    $("#td_"+i+"_"+j).addClass("borderTop")
+		    } 
+             
+             
+		
+        }
+	}
+
+	$("td", table).click(function(evt) {
+		
+        if (start) {
+            start = false;
+        } else if (myTurn == 0) {
+            return;     
+        }
+
+        myTurn=1;
+
+		var elems = evt.currentTarget.id.split('_');
+
+		if (((Math.floor(elems[1]/3)==allowedi) && (Math.floor(elems[2]/3)==allowedj) ) || (allowedi == -1) || (allgoes == true)) {
+		    allgoes=false;
+            if (matrix[elems[1]][elems[2]]==0){
+                if (!checkMiniWin(Math.floor(elems[1]/3),Math.floor(elems[2]/3)))
+    		        ws.send(evt.currentTarget.id);            
+            }
+
+		}
+
+	})
+}
+
+
+function checkMiniWin(qi,qj,paint) {
+               
+        if (allowedi==-1)
+            return false;
+               
+        var win = false;
+        var i = qi * 3;
+        var j = qj * 3;
+
+        for (x=1; x<3; x++){
+            for (ii = i; ii < i + 3; ii++) {
+                if ((matrix[ii][j]==x) && (matrix[ii][j+1]==x) && (matrix[ii][j+2]==x)) 
+                    win = true;   
+            }
+            for (jj = j; jj < j + 3; jj++) {
+                if ((matrix[i][jj]==x) && (matrix[i+1][jj]==x) && (matrix[i+2][jj]==x)) 
+                    win = true;   
+            }
+            if ((matrix[i][j]==x) && (matrix[i+1][j+1]==x) && (matrix[i+2][j+2]==x)) 
+                win = true;
+            if ((matrix[i][j+2]==x) && (matrix[i+1][j+1]==x) && (matrix[i+2][j]==x)) 
+                win = true;         
+        }
+     
+        if ((win==true)&&(paint==true)) {
+            for (ii = i; ii < i + 3; ii++) {
+                for (jj = j; jj < j + 3; jj++) {
+        
+                    if($("#td_"+ii+"_"+jj).hasClass("selectBlue"))
+                        $("#td_"+ii+"_"+jj).removeClass("selectBlue");
+                    if($("#td_"+ii+"_"+jj).hasClass("selectRed"))
+                        $("#td_"+ii+"_"+jj).removeClass("selectRed");
+                    
+                    $("#td_"+ii+"_"+jj).addClass(color);
+                    matrix[ii][jj]=2-myTurn;          
+                }
+            }
+        }
+        
+        return win; 
+}
+
+
+function addAllowedStyle(){
+
+        //var i = allowedi * 3;
+        //var j = allowedj * 3;
+ 
+        for (i = allowedi * 3; i < allowedi * 3 + 3; i++) {
+                for (j = allowedj * 3; j < allowedj * 3 + 3; j++) {
+                        if (i == allowedi * 3) {
+                                $("#td_"+i+"_"+j).addClass("allowedTop");
+                        }
+                        if (i == allowedi * 3 + 2) {
+                                $("#td_"+i+"_"+j).addClass("allowedBottom");
+                        }
+                        if (j == allowedj * 3) {
+                                $("#td_"+i+"_"+j).addClass("allowedLeft");
+                        }
+                        if (j == allowedj * 3 + 2) {
+                                $("#td_"+i+"_"+j).addClass("allowedRight");
+                        }
+                }
+        }
+}
+
+function removeAllowedStyle(i,j){
+			
+	var i = allowedi * 3;
+	var j = allowedj * 3;
+
+	for (i = allowedi * 3; i < allowedi * 3 + 3; i++) {
+        	for (j = allowedj * 3; j < allowedj * 3 + 3; j++) {
+        		if (i == allowedi * 3) {
+                		$("#td_"+i+"_"+j).removeClass("allowedTop");
+                	}
+                	if (i == allowedi * 3 + 2) {
+                		$("#td_"+i+"_"+j).removeClass("allowedBottom");
+                	}
+                	if (j == allowedj * 3) {
+                		$("#td_"+i+"_"+j).removeClass("allowedLeft");
+                	}
+                	if (j == allowedj * 3 + 2) {
+                		$("#td_"+i+"_"+j).removeClass("allowedRight");
+                	}
+		}
+	}
+}
+
+function zero2D(rows, cols) {
+  var array = [], row = [];
+  while (cols--) row.push(0);
+  while (rows--) array.push(row.slice());
+  return array;
+}
+
+</script>
+</head>
+<body>
+<h1>Ultimate Tic Tac Toe</h1>
+<h3>v.0.9 (work in progress)</h3>
+    <table id="game"></table>
+</body>
+</html>
