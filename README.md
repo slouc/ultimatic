@@ -1,6 +1,6 @@
-ultimatic
+Ultimate Tic Tac Toe
 =========
 
-Implementation of Ultimate TicTacToe game in js with go+gorilla websockets backend.
+Implementation of ultimate tic-tac-toe game in js with go+gorilla websockets backend.
 
 
