@@ -5,7 +5,6 @@ import (
     "io"
     "io/ioutil"
     "github.com/gorilla/websocket"
-    
 )
 
 var upgrader = websocket.Upgrader{
